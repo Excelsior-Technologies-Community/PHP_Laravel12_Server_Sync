@@ -1,59 +1,762 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PHP_Laravel12_Server_Sync
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Introduction
 
-## About Laravel
+PHP_Laravel12_Server_Sync is a Laravel 12 based synchronization system that helps developers synchronize database backups and storage files from a simulated remote environment into a local Laravel application. The project demonstrates how synchronization workflows can be implemented using Laravel Artisan Commands, Service Classes, and configuration-driven architecture.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Since local development environments using XAMPP typically do not have access to production servers through SSH, this project uses a local remote-server simulation folder to mimic real-world synchronization behavior. It provides a practical example of database backup synchronization, file synchronization, and automated testing while following Laravel 12 best practices.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Features
 
-## Learning Laravel
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Database Sync
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Database backup copy
 
-## Laravel Sponsors
+- Database restore support
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Skip database option
 
-### Premium Partners
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### File Sync
 
-## Contributing
+- Storage file synchronization
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Images/documents sync
 
-## Code of Conduct
+- Delete missing files option
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-## Security Vulnerabilities
+### Artisan Command
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Normal:
 
-## License
+```bash
+php artisan sync:pull
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Skip Database:
+
+```bash
+php artisan sync:pull --skip-db
+```
+
+### Skip Files:
+
+```bash
+php artisan sync:pull --skip-files
+```
+
+### Delete Files:
+
+
+```bash
+php artisan sync:pull --delete
+```
+
+---
+
+## Requirements
+
+- PHP 8.3+
+- Laravel 12
+- Composer
+- XAMPP
+- MySQL
+
+---
+
+# Installation
+
+## Step 1: Create Laravel 12 Project
+
+```bash
+composer create-project laravel/laravel PHP_Laravel12_Server_Sync "12.*"
+```
+
+Go inside project:
+
+```bash
+cd PHP_Laravel12_Server_Sync
+```
+
+Generate key:
+
+```bash
+php artisan key:generate
+```
+
+---
+
+## Step 2: Configure Database
+
+Open .env
+
+Update:
+
+```.env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel12_server_sync
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Run migration:
+
+```bash
+php artisan migrate
+```
+
+---
+
+## Step 3: Create Command
+
+Create command:
+
+```bash
+php artisan make:command SyncPullCommand
+```
+
+File: app/Console/Commands/SyncPullCommand.php
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+
+use Illuminate\Console\Command;
+
+use App\Services\ServerSyncService;
+
+
+
+class SyncPullCommand extends Command
+{
+
+
+    protected $signature = '
+
+sync:pull
+
+{--skip-db}
+
+{--skip-files}
+
+{--delete}
+
+';
+
+
+    protected $description =
+
+    'Sync database and files from remote server';
+
+
+
+    public function handle(
+        ServerSyncService $service
+    ) {
+
+
+        $this->info(
+            "Starting Server Sync..."
+        );
+
+
+
+        $result = $service->sync(
+
+            $this->options()
+
+        );
+
+
+
+        if ($result['database']) {
+
+            $this->info(
+                "Database sync completed"
+            );
+        } else {
+
+            $this->warn(
+                "Database skipped"
+            );
+        }
+
+
+
+        if ($result['files']) {
+
+            $this->info(
+                "Files sync completed"
+            );
+        } else {
+
+            $this->warn(
+                "Files skipped"
+            );
+        }
+
+
+
+        $this->info(
+            "Sync completed successfully"
+        );
+
+
+
+        return Command::SUCCESS;
+    }
+}
+```
+
+---
+
+## Step 4: Create services folder
+
+File: app/Services
+
+Create:
+
+```bash
+ServerSyncService.php
+
+DatabaseSyncService.php
+
+FileSyncService.php
+```
+
+### ServerSyncService.php
+
+
+File: app/Services/ServerSyncService.php
+
+```php
+<?php
+
+
+namespace App\Services;
+
+
+
+class ServerSyncService
+{
+
+
+    public function __construct(
+
+        protected DatabaseSyncService $database,
+
+        protected FileSyncService $files
+
+    ) {}
+
+
+
+
+    public function sync(
+        array $options
+    ) {
+
+
+        $response = [
+
+            'database' => false,
+
+            'files' => false
+
+        ];
+
+
+
+        if (
+            !($options['skip-db'] ?? false)
+        ) {
+
+
+            $response['database'] =
+
+                $this->database->sync();
+        }
+
+
+
+        if (
+            !($options['skip-files'] ?? false)
+        ) {
+
+
+            $response['files'] =
+
+                $this->files->sync(
+
+                    $options['delete'] ?? false
+
+                );
+        }
+
+
+
+        return $response;
+    }
+}
+```
+
+### DatabaseSyncService.php
+
+File: app/Services/DatabaseSyncService.php
+
+
+```php
+<?php
+
+
+namespace App\Services;
+
+
+use File;
+
+
+class DatabaseSyncService
+{
+
+
+    public function sync()
+    {
+
+
+        $source =
+            config(
+                'server-sync.database.backup'
+            );
+
+
+
+        $destination =
+            config(
+                'server-sync.database.dump_path'
+            );
+
+
+
+        if (!File::exists($destination)) {
+
+            File::makeDirectory(
+                $destination,
+                0755,
+                true
+            );
+        }
+
+
+
+        File::copy(
+
+            $source,
+
+            $destination . '/backup.sql'
+
+        );
+
+
+
+        return true;
+    }
+}
+```
+
+### FileSyncService.php
+
+File: app/Services/FileSyncService.php
+
+```php
+<?php
+
+
+namespace App\Services;
+
+
+use File;
+
+
+class FileSyncService
+{
+
+
+    public function sync(
+        $delete = false
+    ) {
+
+
+        $source =
+            config(
+                'server-sync.files.source'
+            );
+
+
+
+        $destination =
+            config(
+                'server-sync.files.destination'
+            );
+
+
+
+        if ($delete) {
+
+            File::cleanDirectory(
+                $destination
+            );
+        }
+
+
+
+        File::copyDirectory(
+
+            $source,
+
+            $destination
+
+        );
+
+
+
+        return true;
+    }
+}
+```
+
+---
+
+## Step 5: Create Provider
+
+Create:
+
+File: app/Providers/ServerSyncServiceProvider.php
+
+```php
+<?php
+
+
+namespace App\Providers;
+
+
+use Illuminate\Support\ServiceProvider;
+
+
+
+class ServerSyncServiceProvider
+
+extends ServiceProvider
+{
+
+
+    public function register() {}
+
+
+
+    public function boot()
+    {
+
+
+        $this->commands([
+
+            \App\Console\Commands\SyncPullCommand::class
+
+        ]);
+    }
+}
+```
+
+---
+
+## Step 6: Remote Folder Setup
+
+Create:
+
+File: storage/sync/remote
+
+
+Structure:
+
+```text
+storage
+└── sync
+    └── remote
+        ├── database
+        │   └── backup.sql
+        └── files
+            ├── images
+                └── demo.jpg
+```
+
+This folder acts as a simulated Production Server.
+
+
+### Create Sample Database Backup
+
+Create file:
+
+```text
+storage/sync/remote/database/backup.sql
+```
+
+Add sample content:
+
+```sql
+CREATE TABLE demo_sync (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+INSERT INTO demo_sync(name)
+VALUES ('Laravel Server Sync Demo');
+```
+
+This file simulates a production database backup.
+
+### Create Sample File
+
+Create file:
+
+```text
+storage/sync/remote/files/images/demo.jpg
+```
+
+You can place any image file inside this folder.
+
+Final structure:
+
+```text
+storage
+└── sync
+    └── remote
+        ├── database
+        │   └── backup.sql
+        └── files
+            └── images
+                └── demo.jpg
+```
+
+The database backup and image file will be used as source data during the synchronization process.
+
+---
+
+## Step 7: Testing and Verification
+
+### PHPUnit Test
+
+This project includes unit tests similar to the original Laravel Server Sync package.
+
+### Test Location
+
+```text
+tests/Unit/SyncPullCommandTest.php
+```
+
+### Create Test
+
+```bash
+php artisan make:test SyncPullCommandTest --unit
+```
+
+### File
+
+```text
+tests/Unit/SyncPullCommandTest.php
+```
+
+### Code
+
+```php
+<?php
+
+namespace Tests\Unit;
+
+use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+
+class SyncPullCommandTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_sync_command_runs_successfully()
+    {
+        File::ensureDirectoryExists(
+            storage_path('sync/remote/database')
+        );
+
+        File::put(
+            storage_path('sync/remote/database/backup.sql'),
+            'CREATE TABLE test(id INT);'
+        );
+
+        $this->artisan(
+            'sync:pull',
+            [
+                '--skip-files' => true
+            ]
+        )->assertExitCode(0);
+
+        $this->assertFileExists(
+            storage_path('sync/dumps/backup.sql')
+        );
+    }
+
+    public function test_skip_database_option()
+    {
+        $this->artisan(
+            'sync:pull',
+            [
+                '--skip-db' => true
+            ]
+        )->assertExitCode(0);
+    }
+
+    public function test_skip_files_option()
+    {
+        $this->artisan(
+            'sync:pull',
+            [
+                '--skip-files' => true
+            ]
+        )->assertExitCode(0);
+    }
+}
+```
+
+---
+
+## Step 8: Run Synchronization Command
+
+Execute the synchronization command to copy the database backup and storage files from the simulated remote server into the local Laravel application.
+
+### Run Command
+
+```bash
+php artisan sync:pull
+```
+
+### Expected Output
+
+```text
+Starting Server Sync...
+Database sync completed
+Files sync completed
+Sync completed successfully
+```
+
+### Verify Database Synchronization
+
+Check that the backup file has been copied successfully:
+
+```text
+storage/sync/dumps/backup.sql
+```
+
+### Verify File Synchronization
+
+Check that the image file has been copied successfully:
+
+```text
+storage/app/images/demo.jpg
+```
+
+### Run PHPUnit Tests
+
+Execute:
+
+```bash
+php artisan test
+```
+
+### Expected Output
+
+```text
+PASS  Tests\Unit\SyncPullCommandTest
+
+✓ sync command runs successfully
+✓ skip database option
+✓ skip files option
+```
+
+### Additional Command Options
+
+Skip Database Synchronization:
+
+```bash
+php artisan sync:pull --skip-db
+```
+
+Skip File Synchronization:
+
+```bash
+php artisan sync:pull --skip-files
+```
+
+Delete Existing Files Before Sync:
+
+```bash
+php artisan sync:pull --delete
+```
+
+---
+
+## Screenshots
+
+<img width="1915" height="936" alt="Screenshot 2026-06-18 112943" src="https://github.com/user-attachments/assets/2312deff-a8bf-4a54-ac04-db910738635c" />
+
+---
+
+## Project Structure 
+
+```text
+PHP_Laravel12_Server_Sync
+├── app
+│   ├── Console
+│   │   └── Commands
+│   │       └── SyncPullCommand.php
+│   ├── Services
+│   │   ├── ServerSyncService.php
+│   │   ├── DatabaseSyncService.php
+│   │   └── FileSyncService.php
+│   └── Providers
+│       └── ServerSyncServiceProvider.php
+├── config
+│   └── server-sync.php
+├── storage
+│   └── sync
+│       ├── remote
+│       │   ├── database
+│       │   │   └── backup.sql
+│       │   └── files
+│       │       └── images
+│       │           └── demo.jpg
+│       └── dumps
+│           └── backup.sql
+├── tests
+│   └── Unit
+│       └── SyncPullCommandTest.php
+├── .env
+├── artisan
+├── composer.json
+├── composer.lock
+├── package.json
+├── phpunit.xml
+└── README.md
+```
+
+---
+
+## Conclusion
+
+PHP_Laravel12_Server_Sync successfully demonstrates a simple and practical synchronization workflow in Laravel 12, showcasing Artisan Commands, Service Layer Architecture, File Operations, Configuration Management, and PHPUnit Testing within a local development environment.
+
+
